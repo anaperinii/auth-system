@@ -1,0 +1,112 @@
+### Arquivo de testes manuais da API.
+### No VS Code, instale a extensao "REST Client" e clique em "Send Request"
+### acima de cada bloco. Os blocos sao separados por "###".
+
+@baseUrl = http://localhost:3000/api
+
+### 1. Health check (rota publica)
+GET {{baseUrl}}/health
+
+### 2. Cadastro -> deve retornar 400 (senha fraca, sem maiuscula e curta)
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "name": "Helena",
+  "email": "helena.marino@exemplo.com",
+  "password": "123"
+}
+
+### 3. Cadastro -> deve retornar 400 (e-mail em formato invalido)
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "name": "Helena Marino",
+  "email": "nao-e-um-email",
+  "password": "EternalFlame7"
+}
+
+### 4. Cadastro -> deve retornar 400 (campo extra barrado pelo .strict())
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "name": "Helena Marino",
+  "email": "hacker@teste.com",
+  "password": "EternalFlame7",
+  "role": "admin"
+}
+
+### 5. Cadastro valido -> 201 Created (note o e-mail com maiusculas)
+# @name register
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "name": "Helena Marino",
+  "email": "helena.marino@exemplo.com",
+  "password": "EternalFlame7",
+  "confirmPassword": "EternalFlame7"
+}
+
+### 6. Mesmo e-mail em minusculas -> 409 Conflict
+### (indice unico sobre lower(email) + SQLSTATE 23505)
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "name": "Outra Pessoa",
+  "email": "helena.marino@exemplo.com",
+  "password": "EternalFlame7"
+}
+
+### 7. Login com senha errada -> 401 ("E-mail ou senha inválidos.")
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "helena.marino@exemplo.com",
+  "password": "SenhaErrada7"
+}
+
+### 8. Login com e-mail inexistente -> 401 com a MESMA mensagem do item 7
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "naoexiste@teste.com",
+  "password": "EternalFlame7"
+}
+
+### 9. Login valido -> 200 e devolve o accessToken
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "helena.marino@exemplo.com",
+  "password": "EternalFlame7"
+}
+
+### 10. Area restrita SEM token -> 401
+GET {{baseUrl}}/dashboard
+
+### 11. Area restrita com token FALSIFICADO -> 401 (assinatura invalida)
+GET {{baseUrl}}/dashboard
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.assinatura_falsa
+
+### 12. Area restrita COM token valido -> 200
+GET {{baseUrl}}/dashboard
+Authorization: Bearer {{login.response.body.data.accessToken}}
+
+### 13. Perfil do usuario autenticado -> 200
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{login.response.body.data.accessToken}}
+
+### 14. Logout
+POST {{baseUrl}}/auth/logout
+Authorization: Bearer {{login.response.body.data.accessToken}}
+
+### 15. Rota inexistente -> 404
+GET {{baseUrl}}/rota-que-nao-existe
